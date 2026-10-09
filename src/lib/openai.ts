@@ -31,7 +31,24 @@ Rules:
 - Include every visible team row.
 - Do not include headers, labels, or summary rows that are not a team.`;
 
-export async function extractTeamsFromImage(bytes: Uint8Array, mime: string): Promise<ExtractedTeam[]> {
+function rosterPrompt(rosterNames: string[]) {
+  const base =
+    "이 PUBG 매치 결과 스크린샷에서 팀명, 순위, 킬만 추출하세요. 읽을 수 없는 값은 null로 두고 절대 추측하지 마세요. 점수는 계산하지 마세요.";
+  if (rosterNames.length === 0) return base;
+  const list = rosterNames.map((name, index) => `${index + 1}. ${name}`).join("\n");
+  return `${base}
+
+등록된 팀 목록:
+${list}
+
+화면에 보이는 팀이 목록의 팀이면 name은 목록의 철자를 그대로 쓰세요. 목록에 없는 팀이 화면에 있으면 화면에 적힌 이름을 그대로 쓰세요. 화면에 없는 팀은 추가하지 마세요.`;
+}
+
+export async function extractTeamsFromImage(
+  bytes: Uint8Array,
+  mime: string,
+  rosterNames: string[] = [],
+): Promise<ExtractedTeam[]> {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) throw new ConfigError();
 
@@ -51,7 +68,7 @@ export async function extractTeamsFromImage(bytes: Uint8Array, mime: string): Pr
           content: [
             {
               type: "text",
-              text: "이 PUBG 매치 결과 스크린샷에서 팀명, 순위, 킬만 추출하세요. 읽을 수 없는 값은 null로 두고 절대 추측하지 마세요. 점수는 계산하지 마세요.",
+              text: rosterPrompt(rosterNames),
             },
             {
               type: "image_url",

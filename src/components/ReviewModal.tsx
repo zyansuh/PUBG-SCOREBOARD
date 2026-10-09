@@ -1,10 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { ExtractedTeam } from "@/lib/extract";
 import { previewScore } from "@/lib/scoring";
 import { formatSigned } from "@/lib/scoring";
-import { nameSimilarity, suggestTeams, type TeamOption } from "@/lib/teams";
+import { nameSimilarity, suggestTeams, type AnalyzedTeam, type TeamOption } from "@/lib/teams";
 import { issueMessages, inspectRows, parseDraftFields, rowHasIssues } from "@/lib/validation";
 
 type Draft = {
@@ -24,7 +23,7 @@ export function ReviewModal({
   onConfirmed,
 }: {
   imageHash: string;
-  initialTeams: ExtractedTeam[];
+  initialTeams: AnalyzedTeam[];
   existingTeams: TeamOption[];
   onClose: () => void;
   onConfirmed: () => void;
@@ -292,12 +291,13 @@ function fieldClass(invalid: boolean) {
   return `mt-1 w-full border px-3 py-2 font-medium outline-none ${invalid ? "border-red-500 bg-red-950/50 text-red-100" : "border-white/15 bg-black/40"}`;
 }
 
-function emptyExtract(): ExtractedTeam {
-  return { name: null, rank: null, kills: null };
+function emptyExtract(): AnalyzedTeam {
+  return { name: null, rank: null, kills: null, teamId: null };
 }
 
-function createDraft(team: ExtractedTeam, existingTeams: TeamOption[]): Draft {
-  const name = team.name ?? "";
+function createDraft(team: AnalyzedTeam, existingTeams: TeamOption[]): Draft {
+  const linked = team.teamId ? existingTeams.find((item) => item.id === team.teamId) : undefined;
+  const name = linked?.name ?? team.name ?? "";
   const suggestions = name ? suggestTeams(name, existingTeams) : [];
   const exact = suggestions.find((item) => item.similarity === 1);
   return {
@@ -305,12 +305,12 @@ function createDraft(team: ExtractedTeam, existingTeams: TeamOption[]): Draft {
     name,
     rank: team.rank === null ? "" : String(team.rank),
     kills: team.kills === null ? "" : String(team.kills),
-    resolution: exact ? "merge" : suggestions.length > 0 ? "unset" : "new",
-    teamId: exact?.id ?? "",
+    resolution: linked || exact ? "merge" : suggestions.length > 0 ? "unset" : "new",
+    teamId: linked?.id ?? exact?.id ?? "",
   };
 }
 
-function byRank(left: ExtractedTeam, right: ExtractedTeam) {
+function byRank(left: AnalyzedTeam, right: AnalyzedTeam) {
   if (left.rank === null) return 1;
   if (right.rank === null) return -1;
   return left.rank - right.rank;

@@ -2,7 +2,7 @@ import "server-only";
 import { Prisma } from "@prisma/client";
 import type { RankedStanding } from "./scoring";
 import { aggregateStandings, scoreTeam } from "./scoring";
-import type { TeamOption } from "./teams";
+import { normalizeTeamName, ROSTER_SIZE, type RosterEntry, type TeamOption } from "./teams";
 import { prisma } from "./prisma";
 
 export class DuplicateMatchError extends Error {
@@ -25,6 +25,24 @@ export class TeamNotFoundError extends Error {
     this.name = "TeamNotFoundError";
   }
 }
+
+export class RosterSaveError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "RosterSaveError";
+  }
+}
+
+export type RosterSlot = {
+  slot: number;
+  id: string | null;
+  name: string;
+};
+
+export type RosterForm = {
+  persisted: boolean;
+  slots: RosterSlot[];
+};
 
 export type NewMatchInput = {
   imageHash: string;
@@ -76,6 +94,103 @@ export async function getLeaderboard(): Promise<{ standings: RankedStanding[]; m
       })),
     ),
   };
+}
+
+function emptyRosterSlots(): RosterSlot[] {
+  return Array.from({ length: ROSTER_SIZE }, (_, index) => ({
+    slot: index + 1,
+    id: null,
+    name: "",
+  }));
+}
+
+export async function getRosterForm(): Promise<RosterForm> {
+  const slotted = await prisma.team.findMany({
+    where: { slot: { not: null } },
+    orderBy: { slot: "asc" },
+    select: { id: true, name: true, slot: true },
+  });
+  const slots = emptyRosterSlots();
+
+  if (slotted.length > 0) {
+    for (const team of slotted) {
+      if (!team.slot || team.slot < 1 || team.slot > ROSTER_SIZE) continue;
+      slots[team.slot - 1] = { slot: team.slot, id: team.id, name: team.name };
+    }
+    return { persisted: true, slots };
+  }
+
+  const teams = await prisma.team.findMany({
+    orderBy: { createdAt: "asc" },
+    take: ROSTER_SIZE,
+    select: { id: true, name: true },
+  });
+  teams.forEach((team, index) => {
+    slots[index] = { slot: index + 1, id: team.id, name: team.name };
+  });
+  return { persisted: false, slots };
+}
+
+export async function listSlottedTeams(): Promise<TeamOption[]> {
+  return prisma.team.findMany({
+    where: { slot: { not: null } },
+    orderBy: { slot: "asc" },
+    select: { id: true, name: true },
+  });
+}
+
+export async function saveRoster(entries: RosterEntry[]): Promise<RosterForm> {
+  await prisma.$transaction(async (tx) => {
+    await tx.team.updateMany({ data: { slot: null } });
+
+    const named = entries.map((entry, index) => ({ ...entry, slot: index + 1 })).filter((entry) => entry.name.length > 0);
+
+    for (const entry of named) {
+      if (!entry.id) continue;
+      try {
+        await tx.team.update({
+          where: { id: entry.id },
+          data: { name: entry.name, slot: entry.slot },
+        });
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+          throw new RosterSaveError("선택한 팀을 찾을 수 없습니다.");
+        }
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+          throw new RosterSaveError("이미 같은 이름의 팀이 있습니다.");
+        }
+        throw error;
+      }
+    }
+
+    const current = await tx.team.findMany({ select: { id: true, name: true, slot: true } });
+    for (const entry of named) {
+      if (entry.id) continue;
+      const match = current.find(
+        (team) => team.slot === null && normalizeTeamName(team.name) === normalizeTeamName(entry.name),
+      );
+      if (match) {
+        await tx.team.update({
+          where: { id: match.id },
+          data: { name: entry.name, slot: entry.slot },
+        });
+        match.slot = entry.slot;
+        match.name = entry.name;
+        continue;
+      }
+      try {
+        const created = await tx.team.create({ data: { name: entry.name, slot: entry.slot } });
+        current.push({ id: created.id, name: created.name, slot: entry.slot });
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+          throw new RosterSaveError("이미 같은 이름의 팀이 있습니다.");
+        }
+        throw error;
+      }
+    }
+  });
+
+  return getRosterForm();
 }
 
 export async function listTeamOptions(): Promise<TeamOption[]> {

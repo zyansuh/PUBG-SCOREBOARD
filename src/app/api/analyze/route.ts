@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { adminGuard } from "@/lib/auth";
-import { findMatchByHash, listTeamOptions } from "@/lib/db";
+import { findMatchByHash, listSlottedTeams, listTeamOptions } from "@/lib/db";
 import { ExtractError } from "@/lib/extract";
 import { detectImageMime, MAX_IMAGE_BYTES, sha256Hex } from "@/lib/image";
 import { AnalysisError, ConfigError, extractTeamsFromImage } from "@/lib/openai";
+import { assignExtractedTeams } from "@/lib/teams";
 
 export async function POST(request: Request) {
   const denied = await adminGuard();
@@ -46,7 +47,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const teams = await extractTeamsFromImage(bytes, mime);
+    const roster = await listSlottedTeams();
+    const extracted = await extractTeamsFromImage(
+      bytes,
+      mime,
+      roster.map((team) => team.name),
+    );
+    const teams = assignExtractedTeams(extracted, roster);
     const existingTeams = await listTeamOptions();
     return NextResponse.json({ imageHash, teams, existingTeams });
   } catch (error) {

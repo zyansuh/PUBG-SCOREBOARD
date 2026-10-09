@@ -1,20 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import type { ExtractedTeam } from "@/lib/extract";
-import type { TeamOption } from "@/lib/teams";
+import type { AnalyzedTeam, TeamOption } from "@/lib/teams";
 import { ReviewModal } from "./ReviewModal";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
-export function UploadForm() {
+export function UploadForm({ ready }: { ready: boolean }) {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [review, setReview] = useState<{ imageHash: string; teams: ExtractedTeam[]; existingTeams: TeamOption[] } | null>(null);
+  const [review, setReview] = useState<{ imageHash: string; teams: AnalyzedTeam[]; existingTeams: TeamOption[] } | null>(null);
 
   function selectFile(next: File | null) {
     setError("");
@@ -52,7 +51,7 @@ export function UploadForm() {
       body.set("image", file);
       const response = await fetch("/api/analyze", { method: "POST", body });
       const payload = (await response.json().catch(() => null)) as
-        | { error?: string; imageHash?: string; teams?: ExtractedTeam[]; existingTeams?: TeamOption[] }
+        | { error?: string; imageHash?: string; teams?: AnalyzedTeam[]; existingTeams?: TeamOption[] }
         | null;
       if (!response.ok || !payload?.imageHash || !payload.teams || !payload.existingTeams) {
         setError(payload?.error ?? "이미지 분석에 실패했습니다.");
@@ -114,10 +113,14 @@ export function UploadForm() {
         <p className="mt-4 border border-[#F2A900]/70 bg-[#F2A900]/10 px-3 py-2 text-sm text-[#FFE08A]">{success}</p>
       ) : null}
 
+      {!ready ? (
+        <p className="mt-4 text-sm text-[#FFE08A]">팀 이름을 저장한 뒤에 사진을 분석할 수 있습니다.</p>
+      ) : null}
+
       <button
         type="button"
         onClick={analyze}
-        disabled={!file || analyzing}
+        disabled={!file || analyzing || !ready}
         className="mt-4 bg-[#F2A900] px-5 py-3 text-sm font-black text-black disabled:cursor-not-allowed disabled:opacity-40"
       >
         {analyzing ? "스크린샷을 분석하고 있습니다..." : "분석하기"}
