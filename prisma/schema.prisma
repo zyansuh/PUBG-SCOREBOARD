@@ -3,12 +3,13 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 /// 팀 이름은 사람이 확정한 표기 그대로 저장한다.
-/// Supabase로 옮길 때는 provider를 postgresql로 바꾸고 DATABASE_URL만 교체하면 된다.
+/// Supabase Postgres에 저장한다. 화면은 Prisma를 직접 부르지 않고 src/lib/db.ts만 사용한다.
 model Team {
   id        String        @id @default(cuid())
   name      String        @unique

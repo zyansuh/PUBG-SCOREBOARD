@@ -32,7 +32,8 @@ cp .env.example .env
 
 ```bash
 # .env  — Prisma와 Next.js가 읽음
-DATABASE_URL="file:./dev.db"
+DATABASE_URL="postgresql://...6543/postgres?sslmode=require&pgbouncer=true"
+DIRECT_URL="postgresql://...5432/postgres?sslmode=require"
 ADMIN_PASSWORD="change-me"
 
 # .env.local — Next.js 서버만 읽음. 브라우저로 나가지 않음
@@ -41,7 +42,8 @@ OPENAI_API_KEY="sk-..."
 
 | 이름 | 설명 |
 | --- | --- |
-| `DATABASE_URL` | SQLite 파일. 나중에 Supabase Postgres URL로 바꿉니다. |
+| `DATABASE_URL` | Supabase 풀러 주소. 앱이 조회와 저장에 사용합니다. |
+| `DIRECT_URL` | Supabase 세션 주소. Prisma 마이그레이션에 사용합니다. |
 | `ADMIN_PASSWORD` | `/admin` 비밀번호. |
 | `OPENAI_API_KEY` | 서버의 Vision 호출에만 사용. `NEXT_PUBLIC_`을 붙이지 마세요. |
 
@@ -91,12 +93,6 @@ npm test
 
 같은 스크린샷은 SHA-256으로 한 번만 반영됩니다. 10MB를 넘거나 JPG/PNG/WEBP가 아니면 거절합니다.
 
-## Supabase로 옮기기
+## 데이터베이스
 
-데이터베이스 접근은 `src/lib/db.ts`에만 있습니다. 화면과 API는 Prisma 모델을 직접 부르지 않습니다.
-
-1. `prisma/schema.prisma`의 `provider`를 `postgresql`로 변경
-2. `DATABASE_URL`을 Supabase 접속 문자열로 변경
-3. `npx prisma migrate dev`로 같은 Team / Match / MatchResult 스키마를 적용
-
-점수 규칙과 업로드 API는 그대로 둡니다.
+Supabase Postgres를 사용합니다. 테이블은 Prisma 마이그레이션이 만들고, 앱은 `DATABASE_URL`로 접속합니다. `anon` 키와 `service_role` 키는 이 프로젝트에서 쓰지 않습니다.
