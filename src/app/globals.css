@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: "Noto Sans KR", "Pretendard", "Malgun Gothic", sans-serif;
+  --font-brush: "Black Han Sans", "Noto Sans KR", sans-serif;
+  --font-script: "Yellowtail", "Segoe Script", cursive;
+  --color-pubg: #f2a900;
+  --color-pubg-bright: #ffc800;
+}
+
+html,
+body {
+  background: #07090d;
+  color: #f4f1e8;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: #f2a900;
+  color: #14120a;
+}
+
+.title-kr,
+.title-en {
+  font-family: var(--font-brush);
+  display: inline-block;
+  line-height: 0.82;
+  white-space: nowrap;
+}
+
+.title-kr {
+  font-size: clamp(2.7rem, 11vw, 7.3rem);
+  transform: rotate(-8deg) skewX(-8deg);
+}
+
+.title-en {
+  font-size: clamp(3rem, 13vw, 8.5rem);
+  transform: rotate(-4deg) skewX(-6deg);
+}
+
+.script-face {
+  font-family: var(--font-script);
+  color: #f6c400;
+  text-shadow: 0 6px 14px rgba(0, 0, 0, 0.45);
+}
+
+.font-brush {
+  font-family: var(--font-brush);
+}
