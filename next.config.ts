@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
-  serverExternalPackages: ["@prisma/client", "prisma", "tesseract.js"],
+  serverExternalPackages: ["@prisma/client", "prisma", "tesseract.js", "sharp"],
   experimental: {
     proxyClientMaxBodySize: "12mb",
   },

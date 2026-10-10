@@ -1,8 +1,11 @@
 import "server-only";
 import { tmpdir } from "node:os";
-import { createWorker, type Worker } from "tesseract.js";
+import sharp from "sharp";
+import { createWorker, PSM, type Worker } from "tesseract.js";
 import { ExtractError, type ExtractedTeam } from "./extract";
 import { readMatchRows, type RosterSlotName } from "./ocr-rows";
+
+const MAX_EDGE = 1400;
 
 let workerPromise: Promise<Worker> | null = null;
 
@@ -14,7 +17,8 @@ export async function recognizeMatchImage(bytes: Uint8Array, roster: RosterSlotN
   let text = "";
   try {
     const engine = await getWorker();
-    const result = await engine.recognize(Buffer.from(bytes));
+    const image = await shrinkImage(bytes);
+    const result = await engine.recognize(image, {}, { text: true });
     text = result.data.text ?? "";
   } catch (error) {
     console.error("ocr failed", error instanceof Error ? error.message : "unknown");
@@ -34,13 +38,35 @@ export async function recognizeMatchImage(bytes: Uint8Array, roster: RosterSlotN
 
 async function getWorker() {
   if (!workerPromise) {
-    workerPromise = createWorker("kor+eng", 1, {
+    workerPromise = createWorker("eng", 1, {
       cachePath: tmpdir(),
       errorHandler: (message) => console.error("ocr worker", message),
-    }).catch((error: unknown) => {
-      workerPromise = null;
-      throw error;
-    });
+    })
+      .then(async (worker) => {
+        await worker.setParameters({
+          tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
+          tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 \n",
+        });
+        return worker;
+      })
+      .catch((error: unknown) => {
+        workerPromise = null;
+        throw error;
+      });
   }
   return workerPromise;
+}
+
+async function shrinkImage(bytes: Uint8Array) {
+  try {
+    return await sharp(Buffer.from(bytes))
+      .rotate()
+      .resize({ width: MAX_EDGE, height: MAX_EDGE, fit: "inside", withoutEnlargement: true })
+      .grayscale()
+      .png()
+      .toBuffer();
+  } catch (error) {
+    console.error("image resize failed", error instanceof Error ? error.message : "unknown");
+    return Buffer.from(bytes);
+  }
 }
