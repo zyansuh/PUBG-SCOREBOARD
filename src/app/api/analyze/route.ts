@@ -59,7 +59,7 @@ export async function POST(request: Request) {
       roster.map((team) => ({ slot: team.slot, name: team.name })),
     );
     if (extracted.length === 0) {
-      throw new ExtractError("사진에서 TEAM 1 같은 칸 번호를 찾지 못했습니다. 저장한 칸 번호, 순위, 킬이 보이게 찍어 주세요.");
+      throw new ExtractError("사진에서 #1 팀 7 같은 순위와 팀 번호를 찾지 못했습니다. 순위, 팀 번호, 킬이 보이게 찍어 주세요.");
     }
     const teams = assignExtractedTeams(extracted, roster);
     const existingTeams = await listTeamOptions();

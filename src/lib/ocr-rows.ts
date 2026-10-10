@@ -5,6 +5,9 @@ const NAME_MATCH = 0.75;
 const RANK_MAX = 30;
 const KILL_MAX = 99;
 const SLOT_LABEL = /(?:team|tem|tean|팀)[\s_\-]*(\d{1,2})|(\d{1,2})[\s_\-]*팀/i;
+const LABELED_CARD = /#\s*(\d{1,2})\s*(?:팀|team|tem|tean|팅|님)\s*(\d{1,2})/i;
+const LOOSE_CARD = /#\s*(\d{1,2})\s*[^0-9#\s][^0-9#]{0,2}\s*(\d{1,2})/;
+const MASHED_CARD = /^#\s*(\d)(\d)(\d)\s*$/;
 
 export type RosterSlotName = {
   slot: number;
@@ -16,6 +19,17 @@ export function readMatchRows(text: string, roster: RosterSlotName[]): Extracted
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
+  const cards = resultCards(text);
+  if (cards.size > 0) {
+    return roster
+      .flatMap((team) => {
+        const card = cards.get(team.slot);
+        if (!card) return [];
+        return [{ name: team.name, rank: card.rank, kills: card.kills }];
+      })
+      .sort(byRank);
+  }
+
   const slotLines = linesBySlot(lines);
 
   if (slotLines.size > 0) {
@@ -37,6 +51,75 @@ export function readMatchRows(text: string, roster: RosterSlotName[]): Extracted
       return [{ name: team.name, rank: numbers.rank, kills: numbers.kills }];
     })
     .sort(byRank);
+}
+
+function resultCards(text: string) {
+  const lines = text.split(/\r?\n/).map((line) => line.trim());
+  const cards = new Map<number, { rank: number; kills: number | null; labeled: boolean }>();
+
+  lines.forEach((line, index) => {
+    const found = headerCard(line);
+    if (!found) return;
+    const next = index + 1 < lines.length && lines[index + 1] ? lines[index + 1] : undefined;
+    const card = { rank: found.rank, kills: killBeside(line, found.rank, found.slot, next), labeled: found.labeled };
+    const existing = cards.get(found.slot);
+    if (!existing || (!existing.labeled && card.labeled)) cards.set(found.slot, card);
+  });
+
+  return cards;
+}
+
+function headerCard(line: string) {
+  const labeled = LABELED_CARD.exec(line);
+  LABELED_CARD.lastIndex = 0;
+  const labeledCard = labeled ? cardNumbers(labeled[1], labeled[2]) : null;
+  if (labeledCard) return { ...labeledCard, labeled: true };
+
+  const loose = LOOSE_CARD.exec(line);
+  LOOSE_CARD.lastIndex = 0;
+  const looseCard = loose ? cardNumbers(loose[1], loose[2]) : null;
+  if (looseCard && looseCard.rank <= 16) return { ...looseCard, labeled: false };
+
+  const mashed = MASHED_CARD.exec(line);
+  MASHED_CARD.lastIndex = 0;
+  const mashedCard = mashed ? cardNumbers(mashed[1], mashed[3]) : null;
+  if (mashedCard) return { ...mashedCard, labeled: false };
+  return null;
+}
+
+function cardNumbers(rankText: string, slotText: string) {
+  const rank = Number(rankText);
+  const slot = Number(slotText);
+  if (rank < 1 || rank > RANK_MAX || slot < 1 || slot > 10) return null;
+  return { rank, slot };
+}
+
+function killBeside(line: string, rank: number, slot: number, nextLine?: string) {
+  const inline = leftoverNumber(line, rank, slot);
+  if (inline !== null) return inline;
+  if (!nextLine || nextLine.includes("#")) return null;
+  const bare = /^\D*(\d{1,2})\D*$/.exec(nextLine);
+  if (!bare) return null;
+  const value = Number(bare[1]);
+  return value <= KILL_MAX ? value : null;
+}
+
+function leftoverNumber(line: string, rank: number, slot: number) {
+  const numbers = [...line.matchAll(/\d+/g)].map((match) => Number(match[0]));
+  let skippedRank = false;
+  let skippedSlot = false;
+  for (const value of numbers) {
+    if (!skippedRank && value === rank) {
+      skippedRank = true;
+      continue;
+    }
+    if (!skippedSlot && value === slot) {
+      skippedSlot = true;
+      continue;
+    }
+    if (value <= KILL_MAX) return value;
+  }
+  return null;
 }
 
 function linesBySlot(lines: string[]) {

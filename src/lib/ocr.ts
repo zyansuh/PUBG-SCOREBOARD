@@ -41,7 +41,7 @@ export async function recognizeMatchImage(bytes: Uint8Array, roster: RosterSlotN
   const rows = readMatchRows(text, roster);
   console.info("[사진 분석] 칸 번호를 맞췄습니다.", { rows: rows.length });
   if (rows.length === 0) {
-    throw new ExtractError("사진에서 TEAM 1 같은 칸 번호를 찾지 못했습니다. 저장한 칸 번호, 순위, 킬이 보이게 찍어 주세요.");
+    throw new ExtractError("사진에서 #1 팀 7 같은 순위와 팀 번호를 찾지 못했습니다. 순위, 팀 번호, 킬이 보이게 찍어 주세요.");
   }
   return rows;
 }
