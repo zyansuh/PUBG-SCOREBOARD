@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { ANALYSIS_LIMIT_MS, ANALYSIS_TIMEOUT_MESSAGE } from "@/lib/analysis-limit";
 import type { AnalyzedTeam, TeamOption } from "@/lib/teams";
 
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -17,7 +16,6 @@ export function useUploadForm() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
-  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [review, setReview] = useState<ReviewState | null>(null);
@@ -53,18 +51,11 @@ export function useUploadForm() {
     setAnalyzing(true);
     setError("");
     setSuccess("");
-    console.info("[사진 분석] 분석을 요청했습니다.", { name: file.name, bytes: file.size, limitMs: ANALYSIS_LIMIT_MS });
-    const started = Date.now();
-    const controller = new AbortController();
-    setSecondsLeft(Math.ceil(ANALYSIS_LIMIT_MS / 1000));
-    const tick = window.setInterval(() => {
-      setSecondsLeft(Math.max(0, Math.ceil((ANALYSIS_LIMIT_MS - (Date.now() - started)) / 1000)));
-    }, 250);
-    const killer = window.setTimeout(() => controller.abort(), ANALYSIS_LIMIT_MS + 5000);
+    console.info("[사진 분석] 분석을 요청했습니다.", { name: file.name, bytes: file.size });
     try {
       const body = new FormData();
       body.set("image", file);
-      const response = await fetch("/api/analyze", { method: "POST", body, signal: controller.signal });
+      const response = await fetch("/api/analyze", { method: "POST", body });
       const payload = (await response.json().catch(() => null)) as
         | { error?: string; imageHash?: string; teams?: AnalyzedTeam[]; existingTeams?: TeamOption[] }
         | null;
@@ -75,18 +66,10 @@ export function useUploadForm() {
       }
       console.info("[사진 분석] 분석을 마쳤습니다.", { teams: payload.teams.length });
       setReview({ imageHash: payload.imageHash, teams: payload.teams, existingTeams: payload.existingTeams });
-    } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
-        console.info("[사진 분석] 10초 제한에 걸려 기다림을 멈췄습니다.");
-        setError(ANALYSIS_TIMEOUT_MESSAGE);
-        return;
-      }
+    } catch {
       console.info("[사진 분석] 요청을 보내지 못했습니다.");
       setError("업로드 요청에 실패했습니다. 네트워크를 확인해 주세요.");
     } finally {
-      window.clearInterval(tick);
-      window.clearTimeout(killer);
-      setSecondsLeft(null);
       setAnalyzing(false);
     }
   }
@@ -109,7 +92,6 @@ export function useUploadForm() {
     dragging,
     setDragging,
     analyzing,
-    secondsLeft,
     error,
     success,
     review,

@@ -6,7 +6,7 @@ import { detectImageMime, MAX_IMAGE_BYTES, sha256Hex } from "@/lib/image";
 import { recognizeMatchImage } from "@/lib/ocr";
 import { assignExtractedTeams } from "@/lib/teams";
 
-export const maxDuration = 15;
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   const denied = await adminGuard();
@@ -54,7 +54,6 @@ export async function POST(request: Request) {
     const extracted = await recognizeMatchImage(
       bytes,
       roster.map((team) => ({ slot: team.slot, name: team.name })),
-      request.signal,
     );
     const teams = assignExtractedTeams(extracted, roster);
     const existingTeams = await listTeamOptions();
