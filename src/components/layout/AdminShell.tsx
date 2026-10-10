@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useAdminShell } from "@/hooks/useAdminShell";
 
 const LINKS = [
   { href: "/", label: "순위표" },
@@ -10,14 +10,7 @@ const LINKS = [
 ];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const router = useRouter();
-
-  async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.replace("/admin/login");
-    router.refresh();
-  }
+  const { pathname, logout } = useAdminShell();
 
   return (
     <div className="relative min-h-screen">

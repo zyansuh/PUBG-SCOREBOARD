@@ -1,5 +1,5 @@
-import { Battlefield } from "@/components/Battlefield";
-import { LoginForm } from "@/components/LoginForm";
+import { LoginForm } from "@/components/auth/LoginForm";
+import { Battlefield } from "@/components/layout/Battlefield";
 
 export default function LoginPage() {
   return (

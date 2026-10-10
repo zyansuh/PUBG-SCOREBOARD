@@ -1,19 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useReviewModal } from "@/hooks/useReviewModal";
 import { previewScore } from "@/lib/scoring";
 import { formatSigned } from "@/lib/scoring";
 import { nameSimilarity, suggestTeams, type AnalyzedTeam, type TeamOption } from "@/lib/teams";
-import { issueMessages, inspectRows, parseDraftFields, rowHasIssues } from "@/lib/validation";
-
-type Draft = {
-  key: string;
-  name: string;
-  rank: string;
-  kills: string;
-  resolution: "unset" | "new" | "merge";
-  teamId: string;
-};
+import { parseDraftFields, rowHasIssues } from "@/lib/validation";
+import { fieldClass } from "@/styles/classes";
 
 export function ReviewModal({
   imageHash,
@@ -28,85 +20,8 @@ export function ReviewModal({
   onClose: () => void;
   onConfirmed: () => void;
 }) {
-  const [rows, setRows] = useState<Draft[]>(() =>
-    (initialTeams.length > 0 ? [...initialTeams].sort(byRank) : [emptyExtract()]).map((team) => createDraft(team, existingTeams)),
-  );
-  const [playedAt, setPlayedAt] = useState(() => toDatetimeLocal(new Date()));
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-
-  const parsed = useMemo(() => rows.map((row) => parseDraftFields(row)), [rows]);
-  const issues = useMemo(() => inspectRows(parsed), [parsed]);
-  const messages = issueMessages(issues);
-  const choiceMissing = rows.some((row, index) => {
-    const suggestions = parsed[index]?.name ? suggestTeams(parsed[index].name, existingTeams) : [];
-    if (suggestions.length === 0) return false;
-    if (row.resolution === "unset") return true;
-    return row.resolution === "merge" && !row.teamId;
-  });
-  const blocked = messages.length > 0 || choiceMissing || !playedAt || submitting;
-
-  function updateRow(key: string, patch: Partial<Draft>) {
-    setRows((current) =>
-      current.map((row) => {
-        if (row.key !== key) return row;
-        const next = { ...row, ...patch };
-        if (patch.name === undefined) return next;
-        const suggestions = next.name.trim() ? suggestTeams(next.name, existingTeams) : [];
-        if (suggestions.length === 0) {
-          next.resolution = "new";
-          next.teamId = "";
-        } else if (next.resolution === "new") {
-          next.teamId = "";
-        } else if (next.resolution === "merge" && existingTeams.some((team) => team.id === next.teamId)) {
-          return next;
-        } else if (suggestions.some((team) => team.similarity === 1)) {
-          next.resolution = "merge";
-          next.teamId = suggestions.find((team) => team.similarity === 1)?.id ?? "";
-        } else {
-          next.resolution = "unset";
-          next.teamId = "";
-        }
-        return next;
-      }),
-    );
-  }
-
-  async function confirm() {
-    setSubmitting(true);
-    setError("");
-    try {
-      const response = await fetch("/api/matches", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          imageHash,
-          playedAt: new Date(playedAt).toISOString(),
-          teams: rows.map((row) => {
-            const fields = parseDraftFields(row);
-            const suggestions = fields.name ? suggestTeams(fields.name, existingTeams) : [];
-            return {
-              name: fields.name,
-              rank: fields.rank,
-              kills: fields.kills,
-              teamId: row.resolution === "merge" ? row.teamId : null,
-              resolution: suggestions.length === 0 ? "new" : row.resolution,
-            };
-          }),
-        }),
-      });
-      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-      if (!response.ok) {
-        setError(payload?.error ?? "반영에 실패했습니다.");
-        return;
-      }
-      onConfirmed();
-    } catch {
-      setError("반영 요청에 실패했습니다. 네트워크를 확인해 주세요.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
+  const { rows, playedAt, setPlayedAt, submitting, error, parsed, issues, messages, choiceMissing, blocked, updateRow, confirm, addRow, removeRow } =
+    useReviewModal(imageHash, initialTeams, existingTeams, onConfirmed);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby="review-title">
@@ -162,7 +77,7 @@ export function ReviewModal({
                 <article key={row.key} className="border border-white/10 bg-black/30 p-3">
                   <div className="mb-3 flex items-center justify-between">
                     <p className="text-sm font-black text-[#FFC800]">{index + 1}행</p>
-                    <button type="button" className="text-sm text-red-300 hover:text-red-200" onClick={() => setRows((current) => current.filter((item) => item.key !== row.key))}>
+                    <button type="button" className="text-sm text-red-300 hover:text-red-200" onClick={() => removeRow(row.key)}>
                       삭제
                     </button>
                   </div>
@@ -268,7 +183,7 @@ export function ReviewModal({
           <button
             type="button"
             className="mt-3 border border-dashed border-[#F2A900]/60 px-3 py-2 text-sm font-bold text-[#FFC800]"
-            onClick={() => setRows((current) => [...current, createDraft(emptyExtract(), existingTeams)])}
+            onClick={addRow}
           >
             팀 추가
           </button>
@@ -285,38 +200,4 @@ export function ReviewModal({
       </div>
     </div>
   );
-}
-
-function fieldClass(invalid: boolean) {
-  return `mt-1 w-full border px-3 py-2 font-medium outline-none ${invalid ? "border-red-500 bg-red-950/50 text-red-100" : "border-white/15 bg-black/40"}`;
-}
-
-function emptyExtract(): AnalyzedTeam {
-  return { name: null, rank: null, kills: null, teamId: null };
-}
-
-function createDraft(team: AnalyzedTeam, existingTeams: TeamOption[]): Draft {
-  const linked = team.teamId ? existingTeams.find((item) => item.id === team.teamId) : undefined;
-  const name = linked?.name ?? team.name ?? "";
-  const suggestions = name ? suggestTeams(name, existingTeams) : [];
-  const exact = suggestions.find((item) => item.similarity === 1);
-  return {
-    key: crypto.randomUUID(),
-    name,
-    rank: team.rank === null ? "" : String(team.rank),
-    kills: team.kills === null ? "" : String(team.kills),
-    resolution: linked || exact ? "merge" : suggestions.length > 0 ? "unset" : "new",
-    teamId: linked?.id ?? exact?.id ?? "",
-  };
-}
-
-function byRank(left: AnalyzedTeam, right: AnalyzedTeam) {
-  if (left.rank === null) return 1;
-  if (right.rank === null) return -1;
-  return left.rank - right.rank;
-}
-
-function toDatetimeLocal(date: Date) {
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }

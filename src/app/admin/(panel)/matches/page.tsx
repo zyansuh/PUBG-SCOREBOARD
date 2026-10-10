@@ -1,5 +1,5 @@
 import { connection } from "next/server";
-import { MatchHistory } from "@/components/MatchHistory";
+import { MatchHistory } from "@/components/match/MatchHistory";
 import { listMatches, type MatchHistoryItem } from "@/lib/db";
 
 export default async function MatchesPage() {

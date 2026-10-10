@@ -1,5 +1,5 @@
 import { connection } from "next/server";
-import { UploadWorkspace } from "@/components/UploadWorkspace";
+import { UploadWorkspace } from "@/components/match/UploadWorkspace";
 import { getRosterForm, type RosterForm } from "@/lib/db";
 
 export default async function UploadPage() {

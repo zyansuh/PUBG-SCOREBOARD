@@ -1,23 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useUploadWorkspace } from "@/hooks/useUploadWorkspace";
 import { ManualMatchForm } from "./ManualMatchForm";
-import { TeamRoster, type RosterForm, type RosterSlot } from "./TeamRoster";
+import { TeamRoster, type RosterForm } from "./TeamRoster";
 import { UploadForm } from "./UploadForm";
 
 export function UploadWorkspace({ initialRoster }: { initialRoster: RosterForm }) {
-  const [ready, setReady] = useState(() => initialRoster.persisted && initialRoster.slots.some((slot) => slot.name.trim().length > 0));
-  const [slots, setSlots] = useState<RosterSlot[]>(initialRoster.slots);
+  const { ready, slots, onRosterStatus } = useUploadWorkspace(initialRoster);
 
   return (
     <div className="space-y-10">
-      <TeamRoster
-        initialRoster={initialRoster}
-        onStatus={({ saved, dirty, slots: next }) => {
-          setReady(saved);
-          if (!dirty) setSlots(next);
-        }}
-      />
+      <TeamRoster initialRoster={initialRoster} onStatus={onRosterStatus} />
       <ManualMatchForm ready={ready} slots={slots} />
       <section>
         <h2 className="text-lg font-black">매치 스크린샷</h2>

@@ -1,8 +1,8 @@
 import { Suspense } from "react";
-import { Battlefield } from "@/components/Battlefield";
-import { LeaderboardData } from "@/components/LeaderboardData";
-import { LeaderboardSkeleton } from "@/components/LeaderboardTable";
-import { PosterFrame } from "@/components/PosterFrame";
+import { LeaderboardData } from "@/components/leaderboard/LeaderboardData";
+import { LeaderboardSkeleton } from "@/components/leaderboard/LeaderboardTable";
+import { Battlefield } from "@/components/layout/Battlefield";
+import { PosterFrame } from "@/components/layout/PosterFrame";
 
 export default function HomePage() {
   return (
