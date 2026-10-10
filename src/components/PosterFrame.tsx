@@ -4,6 +4,17 @@ export function PosterFrame({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1120px] flex-col px-4 py-6 sm:px-8 sm:py-9">
       <header className="relative">
+        <nav className="mb-4 flex flex-wrap items-center justify-center gap-2" aria-label="주요 메뉴">
+          <Link href="/" className="border border-[#F2A900]/70 px-3 py-2 text-sm font-black text-[#FFC800]">
+            순위표
+          </Link>
+          <Link href="/admin/upload" className="bg-[#F2A900] px-3 py-2 text-sm font-black text-black">
+            결과 입력
+          </Link>
+          <Link href="/admin/matches" className="border border-white/25 px-3 py-2 text-sm font-bold text-white">
+            매치 기록
+          </Link>
+        </nav>
         <p className="text-center text-[9px] font-semibold tracking-[0.16em] text-white/80 sm:text-[12px] sm:tracking-[0.46em]">
           PUBG BATTLEGROUNDS COMMUNITY TOURNAMENT
         </p>
@@ -33,11 +44,6 @@ export function PosterFrame({ children }: { children: React.ReactNode }) {
           <span className="h-px w-10 bg-[#F2A900] sm:w-16" />
         </div>
         <p className="script-face mt-4 text-right text-3xl -rotate-6 sm:text-4xl">Good Luck!</p>
-        <p className="mt-3 text-center">
-          <Link href="/admin/upload" className="text-xs text-white/35 hover:text-[#F2A900] hover:underline">
-            운영자 페이지
-          </Link>
-        </p>
       </footer>
     </div>
   );
