@@ -8,6 +8,7 @@ import { readMatchRows, type RosterSlotName } from "./ocr-rows";
 const MAX_EDGE = 1400;
 
 let workerPromise: Promise<Worker> | null = null;
+let lastLoggedProgress = -1;
 
 export async function recognizeMatchImage(bytes: Uint8Array, roster: RosterSlotName[]): Promise<ExtractedTeam[]> {
   if (roster.length === 0) {
@@ -16,10 +17,14 @@ export async function recognizeMatchImage(bytes: Uint8Array, roster: RosterSlotN
 
   let text = "";
   try {
+    console.info("[사진 분석] 글자 인식을 시작합니다.", { bytes: bytes.byteLength, roster: roster.length });
     const engine = await getWorker();
     const image = await shrinkImage(bytes);
+    console.info("[사진 분석] 사진을 줄였습니다.", { bytes: image.byteLength });
+    lastLoggedProgress = -1;
     const result = await engine.recognize(image, {}, { text: true });
     text = result.data.text ?? "";
+    console.info("[사진 분석] 글자를 읽었습니다.", { chars: text.length, preview: text.slice(0, 240) });
   } catch (error) {
     console.error("ocr failed", error instanceof Error ? error.message : "unknown");
     throw new ExtractError("사진에서 글자를 읽지 못했습니다. JPG 또는 PNG로 다시 올려 주세요.");
@@ -30,6 +35,7 @@ export async function recognizeMatchImage(bytes: Uint8Array, roster: RosterSlotN
   }
 
   const rows = readMatchRows(text, roster);
+  console.info("[사진 분석] 칸 번호를 맞췄습니다.", { rows: rows.length });
   if (rows.length === 0) {
     throw new ExtractError("사진에서 TEAM 1 같은 칸 번호를 찾지 못했습니다. 저장한 칸 번호, 순위, 킬이 보이게 찍어 주세요.");
   }
@@ -38,8 +44,10 @@ export async function recognizeMatchImage(bytes: Uint8Array, roster: RosterSlotN
 
 async function getWorker() {
   if (!workerPromise) {
+    console.info("[사진 분석] 글자 인식 준비를 시작합니다.");
     workerPromise = createWorker("eng", 1, {
       cachePath: tmpdir(),
+      logger: logOcrProgress,
       errorHandler: (message) => console.error("ocr worker", message),
     })
       .then(async (worker) => {
@@ -47,6 +55,7 @@ async function getWorker() {
           tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
           tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 \n",
         });
+        console.info("[사진 분석] 글자 인식 준비가 끝났습니다.");
         return worker;
       })
       .catch((error: unknown) => {
@@ -55,6 +64,15 @@ async function getWorker() {
       });
   }
   return workerPromise;
+}
+
+function logOcrProgress(message: { status?: string; progress?: number }) {
+  if (message.status !== "recognizing text") return;
+  const percent = Math.round((message.progress ?? 0) * 100);
+  const bucket = Math.floor(percent / 25) * 25;
+  if (bucket === lastLoggedProgress) return;
+  lastLoggedProgress = bucket;
+  console.info(`[사진 분석] 글자를 읽는 중 ${percent}%`);
 }
 
 async function shrinkImage(bytes: Uint8Array) {

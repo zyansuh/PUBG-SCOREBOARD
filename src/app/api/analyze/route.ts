@@ -31,6 +31,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "파일 크기는 10MB 이하여야 합니다." }, { status: 413 });
   }
 
+  console.info("[사진 분석] 사진을 받았습니다.", { name: file.name, bytes: file.size });
   const bytes = new Uint8Array(await file.arrayBuffer());
   const mime = detectImageMime(bytes);
   if (!mime) {
@@ -54,12 +55,14 @@ export async function POST(request: Request) {
     );
     const teams = assignExtractedTeams(extracted, roster);
     const existingTeams = await listTeamOptions();
+    console.info("[사진 분석] 확인 창에 보낼 결과를 만들었습니다.", { teams: teams.length });
     return NextResponse.json({ imageHash, teams, existingTeams });
   } catch (error) {
     if (error instanceof ExtractError) {
+      console.info("[사진 분석] 사진을 해석하지 못했습니다.", error.message);
       return NextResponse.json({ error: error.message }, { status: 422 });
     }
-    console.error("analyze failed");
+    console.error("[사진 분석] 분석 중 오류가 났습니다.", error instanceof Error ? error.message : "unknown");
     return NextResponse.json({ error: "이미지에서 결과를 읽지 못했습니다. 잠시 후 다시 시도해 주세요." }, { status: 500 });
   }
 }

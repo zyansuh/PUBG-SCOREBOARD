@@ -51,6 +51,7 @@ export function useUploadForm() {
     setAnalyzing(true);
     setError("");
     setSuccess("");
+    console.info("[사진 분석] 분석을 요청했습니다.", { name: file.name, bytes: file.size });
     try {
       const body = new FormData();
       body.set("image", file);
@@ -59,11 +60,14 @@ export function useUploadForm() {
         | { error?: string; imageHash?: string; teams?: AnalyzedTeam[]; existingTeams?: TeamOption[] }
         | null;
       if (!response.ok || !payload?.imageHash || !payload.teams || !payload.existingTeams) {
+        console.info("[사진 분석] 분석이 끝나지 않았습니다.", { status: response.status, error: payload?.error ?? "응답 형식이 올바르지 않습니다." });
         setError(payload?.error ?? "이미지 분석에 실패했습니다.");
         return;
       }
+      console.info("[사진 분석] 분석을 마쳤습니다.", { teams: payload.teams.length });
       setReview({ imageHash: payload.imageHash, teams: payload.teams, existingTeams: payload.existingTeams });
     } catch {
+      console.info("[사진 분석] 요청을 보내지 못했습니다.");
       setError("업로드 요청에 실패했습니다. 네트워크를 확인해 주세요.");
     } finally {
       setAnalyzing(false);
