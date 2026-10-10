@@ -25,6 +25,30 @@ describe("placementPoints", () => {
   });
 });
 
+describe("aggregateStandings example", () => {
+  it("팀 번호와 경기 순위를 나눠 두 경기를 누적한다", () => {
+    const standings = aggregateStandings([
+      { teamId: "3", teamName: "팀 3", rank: 1, kills: 3 },
+      { teamId: "4", teamName: "팀 4", rank: 2, kills: 2 },
+      { teamId: "2", teamName: "팀 2", rank: 3, kills: 1 },
+      { teamId: "1", teamName: "팀 1", rank: 4, kills: 0 },
+      { teamId: "3", teamName: "팀 3", rank: 2, kills: 2 },
+      { teamId: "4", teamName: "팀 4", rank: 1, kills: 2 },
+      { teamId: "2", teamName: "팀 2", rank: 3, kills: 2 },
+      { teamId: "1", teamName: "팀 1", rank: 4, kills: 2 },
+    ]);
+
+    expect(standings.map((row) => [row.teamName, row.totalPoints])).toEqual([
+      ["팀 3", 21],
+      ["팀 4", 20],
+      ["팀 2", 13],
+      ["팀 1", 10],
+    ]);
+    expect(scoreTeam(1, 3)).toEqual({ placementPoints: 10, killPoints: 3, totalPoints: 13 });
+    expect(scoreTeam(2, 2)).toEqual({ placementPoints: 6, killPoints: 2, totalPoints: 8 });
+  });
+});
+
 describe("killPoints", () => {
   it("1킬은 1점이다", () => {
     expect(killPoints(0)).toBe(0);

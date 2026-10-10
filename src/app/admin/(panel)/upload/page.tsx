@@ -23,6 +23,9 @@ export default async function UploadPage() {
       <p className="mt-2 max-w-2xl text-sm leading-6 text-white/70">
         참가 팀을 10칸까지 저장한 뒤 결과 스크린샷을 올리면, 그 팀의 순위와 킬로 점수를 계산합니다.
       </p>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-white/70">
+        사진이 없을 때는 팀 번호와 경기 순위를 직접 입력해도 됩니다. 직접 입력은 AI를 호출하지 않고, 서버가 같은 점수 규칙으로 계산합니다.
+      </p>
       {dbError ? (
         <p role="alert" className="mt-4 border border-red-500/70 bg-red-950/40 px-3 py-2 text-sm text-red-200">
           팀 명단을 불러오지 못했습니다. 잠시 후 다시 열어 주세요.

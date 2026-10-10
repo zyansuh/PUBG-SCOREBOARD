@@ -14,12 +14,18 @@ export type RosterForm = {
   slots: RosterSlot[];
 };
 
+export type RosterStatus = {
+  saved: boolean;
+  dirty: boolean;
+  slots: RosterSlot[];
+};
+
 export function TeamRoster({
   initialRoster,
   onStatus,
 }: {
   initialRoster: RosterForm;
-  onStatus: (status: { saved: boolean; dirty: boolean }) => void;
+  onStatus: (status: RosterStatus) => void;
 }) {
   const [slots, setSlots] = useState<Array<RosterEntry & { slot: number }>>(() => initialRoster.slots.map(toEntry));
   const [savedSnapshot, setSavedSnapshot] = useState(() => JSON.stringify(initialRoster.slots.map(toEntry)));
@@ -32,7 +38,7 @@ export function TeamRoster({
     const next = slots.map((slot, slotIndex) => (slotIndex === index ? { ...slot, name } : slot));
     setSlots(next);
     const dirty = JSON.stringify(next) !== savedSnapshot;
-    onStatus({ saved: persisted && !dirty, dirty });
+    onStatus({ saved: persisted && !dirty, dirty, slots: next });
     setError("");
     setMessage("");
   }
@@ -56,8 +62,8 @@ export function TeamRoster({
       setSlots(next);
       setSavedSnapshot(JSON.stringify(next));
       setPersisted(true);
-      setMessage("팀 명단을 저장했습니다. 스크린샷의 순위와 킬을 이 팀에 맞춰 계산합니다.");
-      onStatus({ saved: true, dirty: false });
+      setMessage("팀 명단을 저장했습니다. 직접 입력하거나 스크린샷으로 이 팀의 점수를 계산할 수 있습니다.");
+      onStatus({ saved: true, dirty: false, slots: payload.slots });
     } catch {
       setError("팀 명단 저장에 실패했습니다. 네트워크를 확인해 주세요.");
     } finally {

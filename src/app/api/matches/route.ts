@@ -27,7 +27,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, matchId: match.id, teamCount: parsed.teams.length });
   } catch (error) {
     if (error instanceof DuplicateMatchError) {
-      return NextResponse.json({ error: error.message }, { status: 409 });
+      const manual = body && typeof body === "object" && (body as { entry?: unknown }).entry === "manual";
+      return NextResponse.json(
+        { error: manual ? "이 직접 입력은 이미 반영되었습니다." : error.message },
+        { status: 409 },
+      );
     }
     if (error instanceof DuplicateTeamNameError || error instanceof TeamNotFoundError) {
       return NextResponse.json({ error: error.message }, { status: 400 });
