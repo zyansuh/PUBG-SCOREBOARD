@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aggregateStandings, killPoints, placementPoints, scoreTeam } from "./scoring";
+import { aggregateStandings, killPoints, placementPoints, scoreTeam, skipTiedRanks } from "./scoring";
 
 describe("placementPoints", () => {
   it("순위별 점수를 규칙대로 준다", () => {
@@ -132,5 +132,24 @@ describe("aggregateStandings", () => {
 
   it("결과가 없으면 빈 배열이다", () => {
     expect(aggregateStandings([])).toEqual([]);
+  });
+});
+
+describe("skipTiedRanks", () => {
+  it("2등이 두 팀이면 다음은 4등이다", () => {
+    const standings = aggregateStandings([
+      { teamId: "first", teamName: "1위팀", rank: 1, kills: 5 },
+      { teamId: "tie-a", teamName: "동점가", rank: 2, kills: 1 },
+      { teamId: "tie-b", teamName: "동점나", rank: 2, kills: 1 },
+      { teamId: "next", teamName: "다음팀", rank: 5, kills: 0 },
+    ]);
+
+    expect(standings.map((row) => row.totalPoints)).toEqual([15, 7, 7, 3]);
+    expect(skipTiedRanks(standings).map((row) => [row.teamName, row.rank])).toEqual([
+      ["1위팀", 1],
+      ["동점가", 2],
+      ["동점나", 2],
+      ["다음팀", 4],
+    ]);
   });
 });

@@ -90,13 +90,24 @@ export function aggregateStandings(results: ResultInput[]): RankedStanding[] {
   }
 
   return [...totals.values()]
-    .sort((left, right) => {
-      if (right.totalPoints !== left.totalPoints) return right.totalPoints - left.totalPoints;
-      if (right.killPoints !== left.killPoints) return right.killPoints - left.killPoints;
-      if (right.wins !== left.wins) return right.wins - left.wins;
-      return left.teamName.localeCompare(right.teamName, "ko");
-    })
+    .sort(compareStandings)
     .map((standing, index) => ({ ...standing, rank: index + 1 }));
+}
+
+export function skipTiedRanks(standings: RankedStanding[]): RankedStanding[] {
+  let rank = 1;
+  return standings.map((standing, index) => {
+    const previous = standings[index - 1];
+    if (!previous || previous.totalPoints !== standing.totalPoints) rank = index + 1;
+    return { ...standing, rank };
+  });
+}
+
+function compareStandings(left: Standing, right: Standing) {
+  if (right.totalPoints !== left.totalPoints) return right.totalPoints - left.totalPoints;
+  if (right.killPoints !== left.killPoints) return right.killPoints - left.killPoints;
+  if (right.wins !== left.wins) return right.wins - left.wins;
+  return left.teamName.localeCompare(right.teamName, "ko");
 }
 
 export function formatSigned(value: number): string {

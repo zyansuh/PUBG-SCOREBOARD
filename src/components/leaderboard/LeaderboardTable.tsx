@@ -1,5 +1,8 @@
+"use client";
+
+import { useState } from "react";
 import type { RankedStanding } from "@/lib/scoring";
-import { formatSigned } from "@/lib/scoring";
+import { formatSigned, skipTiedRanks } from "@/lib/scoring";
 import { RankBadge } from "./RankBadge";
 
 export function LeaderboardTable({
@@ -11,9 +14,21 @@ export function LeaderboardTable({
   matchCount: number;
   dbError?: boolean;
 }) {
+  const [skipTies, setSkipTies] = useState(false);
+  const rows = skipTies ? skipTiedRanks(standings) : standings;
+
   return (
     <section>
       <h2 className="sr-only">누적 순위</h2>
+      <label className="mb-3 flex items-start gap-2 text-sm text-white/80">
+        <input
+          type="checkbox"
+          checked={skipTies}
+          onChange={(event) => setSkipTies(event.target.checked)}
+          className="mt-1 h-4 w-4 accent-[#F2A900]"
+        />
+        <span>동점이면 다음 순위를 건너뜁니다. 2등이 두 팀이면 3등 없이 4등으로 표시합니다.</span>
+      </label>
       <div className="overflow-hidden rounded-[3px] border-[3px] border-[#F2A900] shadow-[0_24px_70px_rgba(0,0,0,0.5)]">
         <div className="hidden md:block">
           <table className="w-full border-collapse text-white">
@@ -36,7 +51,7 @@ export function LeaderboardTable({
                   </td>
                 </tr>
               ) : (
-                standings.map((team, index) => (
+                rows.map((team, index) => (
                   <tr key={team.teamId} className={`border-t border-white/10 ${rowTone(team.rank, index)}`} title={rowTitle(team)}>
                     <td className="px-3 py-2.5">
                       <RankBadge rank={team.rank} idPrefix={`desk-${team.teamId}`} />
@@ -61,7 +76,7 @@ export function LeaderboardTable({
               {dbError ? "데이터베이스에 연결하지 못했습니다." : "아직 반영된 경기가 없습니다."}
             </p>
           ) : (
-            standings.map((team, index) => (
+            rows.map((team, index) => (
               <article key={team.teamId} className={`border-t border-white/10 px-4 py-3 ${rowTone(team.rank, index)}`}>
                 <div className="flex items-center gap-3">
                   <RankBadge rank={team.rank} idPrefix={`mob-${team.teamId}`} />
@@ -79,7 +94,9 @@ export function LeaderboardTable({
       </div>
       <p className="mt-3 text-center text-[11px] tracking-wide text-white/55 sm:text-xs">
         {matchCount > 0 ? `${matchCount}경기 누적 · ` : ""}
-        동점일 때는 킬 점수, 그다음 1위 횟수 순입니다.
+        {skipTies
+          ? "같은 총점은 같은 순위입니다. 같은 순위 안에서는 킬 점수, 그다음 1위 횟수 순입니다."
+          : "동점일 때는 킬 점수, 그다음 1위 횟수 순입니다."}
       </p>
     </section>
   );
