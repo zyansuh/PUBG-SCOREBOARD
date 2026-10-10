@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   serverExternalPackages: ["@prisma/client", "prisma", "tesseract.js", "sharp"],
+  outputFileTracingIncludes: {
+    "/api/analyze": ["./src/lib/tessdata/**/*"],
+  },
   experimental: {
     proxyClientMaxBodySize: "12mb",
   },

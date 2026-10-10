@@ -4,7 +4,7 @@ import { formatSize, useUploadForm } from "@/hooks/useUploadForm";
 import { ReviewModal } from "./ReviewModal";
 
 export function UploadForm({ ready }: { ready: boolean }) {
-  const { file, previewUrl, dragging, setDragging, analyzing, error, success, review, selectFile, analyze, closeReview, confirmReview } =
+  const { file, previewUrl, dragging, setDragging, analyzing, secondsLeft, error, success, review, selectFile, analyze, closeReview, confirmReview } =
     useUploadForm();
 
   return (
@@ -67,7 +67,12 @@ export function UploadForm({ ready }: { ready: boolean }) {
       >
         {analyzing ? "스크린샷을 분석하고 있습니다..." : "분석하기"}
       </button>
-      {analyzing ? <p className="mt-2 text-sm text-white/70">전장 기록을 읽고 있습니다. 잠시만 기다려 주세요.</p> : null}
+      {analyzing ? (
+        <p className="mt-2 text-sm text-white/70">
+          전장 기록을 읽고 있습니다. 10초 안에 마칩니다.
+          {secondsLeft === null ? "" : ` 남은 시간 ${secondsLeft}초`}
+        </p>
+      ) : null}
 
       {review ? (
         <ReviewModal
