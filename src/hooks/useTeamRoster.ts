@@ -40,7 +40,7 @@ export function useTeamRoster(initialRoster: RosterForm, onStatus: (status: Rost
       setSlots(next);
       setSavedSnapshot(JSON.stringify(next));
       setPersisted(true);
-      setMessage("팀 명단을 저장했습니다. 직접 입력하거나 스크린샷으로 이 팀의 점수를 계산할 수 있습니다.");
+      setMessage("팀 명단을 저장했습니다. 결과 사진을 올리거나 경기 순위와 킬을 입력하면 이 팀의 점수를 계산할 수 있습니다.");
       onStatus({ saved: true, dirty: false, slots: payload.slots });
     } catch {
       setError("팀 명단 저장에 실패했습니다. 네트워크를 확인해 주세요.");

@@ -5,7 +5,7 @@ import { useAdminShell } from "@/hooks/useAdminShell";
 
 const LINKS = [
   { href: "/", label: "순위표" },
-  { href: "/admin/upload", label: "업로드" },
+  { href: "/admin/upload", label: "결과 입력" },
   { href: "/admin/matches", label: "매치 기록" },
 ];
 

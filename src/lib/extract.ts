@@ -5,7 +5,7 @@ export type ExtractedTeam = {
 };
 
 export class ExtractError extends Error {
-  constructor(message = "AI 응답을 해석하지 못했습니다.") {
+  constructor(message = "인식 결과를 해석하지 못했습니다.") {
     super(message);
     this.name = "ExtractError";
   }

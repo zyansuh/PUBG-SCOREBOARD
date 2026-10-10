@@ -1,25 +1,26 @@
 # 배그 OPSN
 
-PUBG 커뮤니티 대회 누적 순위표입니다. TEAM 1부터 팀 이름을 저장한 뒤, 결과 스크린샷을 올리거나 순위와 킬을 직접 입력합니다. 점수는 서버 규칙으로 계산되고, 스크린샷은 관리자가 확인한 뒤에만 순위표에 누적됩니다.
+PUBG 커뮤니티 대회 누적 순위표입니다. TEAM 1부터 팀 이름을 저장한 뒤 결과 사진을 올리면, 서버가 사진에서 순위와 킬을 읽고 점수를 계산해 누적합니다. OpenAI API 키는 사용하지 않습니다.
 
 ## 구조
 
 ```text
 src/app/page.tsx                         메인 순위표
 src/app/admin/login                      관리자 로그인
-src/app/admin/(panel)/upload             팀 명단, 직접 입력, 스크린샷
+src/app/admin/(panel)/upload             팀 명단, 사진 인식, 직접 입력
 src/app/admin/(panel)/matches            매치 기록, 삭제
 src/components/leaderboard               순위표와 동점 순위 칸
-src/components/match                     팀 칸, 직접 입력, 업로드, 확인
+src/components/match                     팀 칸, 직접 입력, 사진 확인
 src/hooks                                화면 상태와 요청
+src/lib/ocr.ts                           사진에서 글자를 읽는다
+src/lib/ocr-rows.ts                      읽은 글자에서 순위와 킬을 고른다
 src/lib/scoring.ts                       점수 계산. 이 파일만 점수를 만든다
 src/lib/db.ts                            DB 접근
-src/lib/openai.ts                        스크린샷 읽기. 서버 전용
 src/proxy.ts                             /admin 쿠키 세션 확인
 prisma/schema.prisma                     Team, Match, MatchResult
 ```
 
-점수는 AI가 계산하지 않습니다. 화면의 예상 점수와 저장되는 점수는 모두 `src/lib/scoring.ts`를 사용하고, DB에 넣는 값은 확정 API가 다시 계산합니다.
+화면의 예상 점수와 저장되는 점수는 모두 `src/lib/scoring.ts`를 사용하고, DB에 넣는 값은 저장 API가 다시 계산합니다.
 
 ## 환경 변수
 
@@ -34,9 +35,6 @@ cp .env.example .env
 DATABASE_URL="postgresql://...6543/postgres?sslmode=require&pgbouncer=true"
 DIRECT_URL="postgresql://...5432/postgres?sslmode=require"
 ADMIN_PASSWORD="change-me"
-
-# .env.local — Next.js 서버만 읽음. 브라우저로 나가지 않음
-OPENAI_API_KEY="sk-..."
 ```
 
 | 이름 | 설명 |
@@ -44,7 +42,6 @@ OPENAI_API_KEY="sk-..."
 | `DATABASE_URL` | Supabase 풀러 주소. 앱이 조회와 저장에 사용합니다. |
 | `DIRECT_URL` | Supabase 세션 주소. Prisma 마이그레이션에 사용합니다. |
 | `ADMIN_PASSWORD` | `/admin` 비밀번호. 로그인에 쓰는 값입니다. |
-| `OPENAI_API_KEY` | 스크린샷을 읽을 때만 사용. `NEXT_PUBLIC_`을 붙이지 마세요. |
 
 `.env`와 `.env.local`은 Git에 올라가지 않습니다. 로컬에서 값을 바꿔도 이미 켜 둔 개발 서버에는 바로 반영되지 않으므로 서버를 다시 시작합니다.
 
@@ -55,7 +52,6 @@ OPENAI_API_KEY="sk-..."
 - `DATABASE_URL`
 - `DIRECT_URL`
 - `ADMIN_PASSWORD`
-- `OPENAI_API_KEY` (스크린샷 분석을 쓸 때)
 
 Production에 저장한 뒤 **Deployments**에서 최신 배포를 **Redeploy**합니다. 변수만 저장하면 기존 배포에는 적용되지 않습니다.
 
@@ -96,12 +92,12 @@ npm test
 
 1. http://localhost:3000/admin/upload
 2. `ADMIN_PASSWORD`로 로그인
-3. TEAM 1부터 차례로 팀 이름을 적고 **팀 명단 저장**. 최대 10팀입니다. 저장하기 전에는 사진 분석과 직접 입력이 열리지 않습니다.
-4. 사진이 있으면 결과 스크린샷을 올립니다. `gpt-4o`가 `{"teams":[{"name","rank","kills"}]}` 형태로 읽고, 저장한 팀 이름에 맞춥니다. 모델은 점수를 계산하지 않습니다. 확인 창에서 고친 뒤 **확정하고 반영**해야 순위표에 누적됩니다.
-5. 사진이 없으면 저장된 팀의 경기 순위와 킬을 직접 입력하고 **직접 입력 반영**을 누릅니다. 이 경로는 AI를 호출하지 않고 같은 점수 규칙을 사용합니다. 팀 번호와 경기 순위는 다른 값입니다. TEAM 3이 그 경기 1위일 수 있습니다.
+3. TEAM 1부터 차례로 팀 이름을 적고 **팀 명단 저장**. 최대 10팀입니다. 저장하기 전에는 사진 인식과 직접 입력이 열리지 않습니다.
+4. 결과 사진을 올리면 서버가 글자를 읽어 저장된 팀의 순위와 킬을 맞춥니다. 확인 창의 점수는 `scoring.ts`로 계산되고, **확정하고 반영**해야 DB에 저장되어 순위표에 누적됩니다.
+5. 사진이 없으면 저장된 팀의 경기 순위와 킬을 입력하고 **직접 입력 반영**을 누릅니다. 팀 번호와 경기 순위는 다른 값입니다. TEAM 3이 그 경기 1위일 수 있습니다.
 6. http://localhost:3000/admin/matches 에서 매치를 지울 수 있습니다. 누적 순위는 남은 `MatchResult`를 다시 합산합니다.
 
-같은 스크린샷은 SHA-256으로 한 번만 반영됩니다. 10MB를 넘거나 JPG/PNG/WEBP가 아니면 거절합니다.
+같은 사진은 SHA-256으로 한 번만 반영됩니다. 10MB를 넘거나 JPG, PNG, WEBP가 아니면 거절합니다.
 
 ## 데이터베이스
 

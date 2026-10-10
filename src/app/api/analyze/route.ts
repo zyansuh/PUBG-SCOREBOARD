@@ -3,7 +3,7 @@ import { adminGuard } from "@/lib/auth";
 import { findMatchByHash, listSlottedTeams, listTeamOptions } from "@/lib/db";
 import { ExtractError } from "@/lib/extract";
 import { detectImageMime, MAX_IMAGE_BYTES, sha256Hex } from "@/lib/image";
-import { AnalysisError, ConfigError, extractTeamsFromImage } from "@/lib/openai";
+import { recognizeMatchImage } from "@/lib/ocr";
 import { assignExtractedTeams } from "@/lib/teams";
 
 export async function POST(request: Request) {
@@ -48,22 +48,18 @@ export async function POST(request: Request) {
     }
 
     const roster = await listSlottedTeams();
-    const extracted = await extractTeamsFromImage(
+    const extracted = await recognizeMatchImage(
       bytes,
-      mime,
       roster.map((team) => team.name),
     );
     const teams = assignExtractedTeams(extracted, roster);
     const existingTeams = await listTeamOptions();
     return NextResponse.json({ imageHash, teams, existingTeams });
   } catch (error) {
-    if (error instanceof ConfigError) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-    if (error instanceof ExtractError || error instanceof AnalysisError) {
-      return NextResponse.json({ error: error.message }, { status: error instanceof ExtractError ? 422 : 502 });
+    if (error instanceof ExtractError) {
+      return NextResponse.json({ error: error.message }, { status: 422 });
     }
     console.error("analyze failed");
-    return NextResponse.json({ error: "이미지 분석에 실패했습니다. 잠시 후 다시 시도해 주세요." }, { status: 500 });
+    return NextResponse.json({ error: "이미지에서 결과를 읽지 못했습니다. 잠시 후 다시 시도해 주세요." }, { status: 500 });
   }
 }

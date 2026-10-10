@@ -104,7 +104,7 @@ export function validateSubmission(
 
   const record = body as Record<string, unknown>;
   if (typeof record.imageHash !== "string" || !/^[a-f0-9]{64}$/.test(record.imageHash)) {
-    return { ok: false, error: "이미지 식별자가 올바르지 않습니다. 스크린샷을 다시 분석해 주세요." };
+    return { ok: false, error: "입력 식별자가 올바르지 않습니다. 다시 입력해 주세요." };
   }
   if (typeof record.playedAt !== "string") {
     return { ok: false, error: "경기 일시를 입력해 주세요." };
