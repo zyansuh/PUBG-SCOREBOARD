@@ -15,7 +15,7 @@ export function UploadWorkspace({ initialRoster }: { initialRoster: RosterForm }
       <section>
         <h2 className="text-lg font-black">매치 스크린샷</h2>
         <p className="mt-1 max-w-2xl text-sm leading-6 text-white/65">
-          저장한 팀 이름으로 사진의 순위와 킬을 읽습니다. 점수는 서버 코드로 계산되고, 확정해야 순위표에 누적됩니다.
+          사진의 TEAM 1은 위에서 저장한 TEAM 1과 연결됩니다. 그 칸의 순위와 킬로 점수를 계산하고, 확정해야 순위표에 누적됩니다.
         </p>
         <div className="mt-4">
           <UploadForm ready={ready} />

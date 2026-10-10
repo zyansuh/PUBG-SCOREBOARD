@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     const roster = await listSlottedTeams();
     const extracted = await recognizeMatchImage(
       bytes,
-      roster.map((team) => team.name),
+      roster.map((team) => ({ slot: team.slot, name: team.name })),
     );
     const teams = assignExtractedTeams(extracted, roster);
     const existingTeams = await listTeamOptions();

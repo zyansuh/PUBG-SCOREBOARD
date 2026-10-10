@@ -131,12 +131,13 @@ export async function getRosterForm(): Promise<RosterForm> {
   return { persisted: false, slots };
 }
 
-export async function listSlottedTeams(): Promise<TeamOption[]> {
-  return prisma.team.findMany({
+export async function listSlottedTeams(): Promise<Array<TeamOption & { slot: number }>> {
+  const teams = await prisma.team.findMany({
     where: { slot: { not: null } },
     orderBy: { slot: "asc" },
-    select: { id: true, name: true },
+    select: { id: true, name: true, slot: true },
   });
+  return teams.flatMap((team) => (team.slot === null ? [] : [{ id: team.id, name: team.name, slot: team.slot }]));
 }
 
 export async function saveRoster(entries: RosterEntry[]): Promise<RosterForm> {

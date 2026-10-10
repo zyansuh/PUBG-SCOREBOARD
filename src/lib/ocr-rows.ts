@@ -4,38 +4,93 @@ import { nameSimilarity, normalizeTeamName } from "./teams";
 const NAME_MATCH = 0.75;
 const RANK_MAX = 30;
 const KILL_MAX = 99;
+const SLOT_LABEL = /(?:team|tem|tean|팀)[\s_\-]*(\d{1,2})|(\d{1,2})[\s_\-]*팀/i;
 
-export function readMatchRows(text: string, rosterNames: string[]): ExtractedTeam[] {
+export type RosterSlotName = {
+  slot: number;
+  name: string;
+};
+
+export function readMatchRows(text: string, roster: RosterSlotName[]): ExtractedTeam[] {
   const lines = text
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
-  const used = new Set<number>();
-  const rows: ExtractedTeam[] = [];
+  const slotLines = linesBySlot(lines);
 
-  for (const name of rosterNames) {
-    const found = bestLine(lines, name, used);
-    if (!found) continue;
-    used.add(found.index);
-    const numbers = placementAndKills(found.line);
-    rows.push({ name, rank: numbers.rank, kills: numbers.kills });
+  if (slotLines.size > 0) {
+    return roster
+      .flatMap((team) => {
+        const line = slotLines.get(team.slot);
+        if (!line) return [];
+        const numbers = placementAndKills(stripSlotLabel(line));
+        return [{ name: team.name, rank: numbers.rank, kills: numbers.kills }];
+      })
+      .sort(byRank);
   }
 
-  return rows.sort(byRank);
+  return roster
+    .flatMap((team) => {
+      const found = bestLine(lines, team.name);
+      if (!found) return [];
+      const numbers = placementAndKills(found);
+      return [{ name: team.name, rank: numbers.rank, kills: numbers.kills }];
+    })
+    .sort(byRank);
 }
 
-function bestLine(lines: string[], name: string, used: Set<number>) {
-  let bestIndex = -1;
+function linesBySlot(lines: string[]) {
+  const slots = new Map<number, string>();
+  const used = new Set<number>();
+
+  lines.forEach((line, index) => {
+    const slot = slotNumber(line);
+    if (slot === null || slots.has(slot)) return;
+    const rest = stripSlotLabel(line);
+    if (/\d/.test(rest)) {
+      slots.set(slot, line);
+      used.add(index);
+      return;
+    }
+
+    const previous = index > 0 && !used.has(index - 1) && isBareNumber(lines[index - 1]) ? lines[index - 1] : "";
+    const next = index + 1 < lines.length && isBareNumber(lines[index + 1]) ? lines[index + 1] : "";
+    slots.set(slot, `${previous} ${line} ${next}`.trim());
+    used.add(index);
+    if (previous) used.add(index - 1);
+    if (next) used.add(index + 1);
+  });
+
+  return slots;
+}
+
+function slotNumber(line: string) {
+  const match = SLOT_LABEL.exec(line);
+  SLOT_LABEL.lastIndex = 0;
+  if (!match) return null;
+  const slot = Number(match[1] ?? match[2]);
+  if (slot < 1 || slot > 10) return null;
+  return slot;
+}
+
+function stripSlotLabel(line: string) {
+  return line.replace(SLOT_LABEL, " ");
+}
+
+function isBareNumber(line: string) {
+  return /^\d{1,4}$/.test(line.trim());
+}
+
+function bestLine(lines: string[], name: string) {
+  let best = "";
   let bestScore = 0;
-  for (let index = 0; index < lines.length; index += 1) {
-    if (used.has(index)) continue;
-    const score = lineNameScore(lines[index], name);
+  for (const line of lines) {
+    const score = lineNameScore(line, name);
     if (score < NAME_MATCH || score <= bestScore) continue;
-    bestIndex = index;
+    best = line;
     bestScore = score;
   }
-  if (bestIndex < 0) return null;
-  return { index: bestIndex, line: lines[bestIndex] };
+  return bestScore === 0 ? null : best;
 }
 
 function lineNameScore(line: string, name: string) {

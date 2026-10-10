@@ -2,12 +2,12 @@ import "server-only";
 import { tmpdir } from "node:os";
 import { createWorker, type Worker } from "tesseract.js";
 import { ExtractError, type ExtractedTeam } from "./extract";
-import { readMatchRows } from "./ocr-rows";
+import { readMatchRows, type RosterSlotName } from "./ocr-rows";
 
 let workerPromise: Promise<Worker> | null = null;
 
-export async function recognizeMatchImage(bytes: Uint8Array, rosterNames: string[]): Promise<ExtractedTeam[]> {
-  if (rosterNames.length === 0) {
+export async function recognizeMatchImage(bytes: Uint8Array, roster: RosterSlotName[]): Promise<ExtractedTeam[]> {
+  if (roster.length === 0) {
     throw new ExtractError("저장된 팀 이름이 없습니다. 팀 명단을 저장한 뒤 사진을 올려 주세요.");
   }
 
@@ -25,9 +25,9 @@ export async function recognizeMatchImage(bytes: Uint8Array, rosterNames: string
     throw new ExtractError("사진에서 글자를 읽지 못했습니다. 순위, 팀명, 킬이 보이는 이미지로 다시 올려 주세요.");
   }
 
-  const rows = readMatchRows(text, rosterNames);
+  const rows = readMatchRows(text, roster);
   if (rows.length === 0) {
-    throw new ExtractError("사진에서 저장된 팀을 찾지 못했습니다. 직접 입력하거나 다른 사진을 올려 주세요.");
+    throw new ExtractError("사진에서 TEAM 1 같은 칸 번호를 찾지 못했습니다. 저장한 칸 번호, 순위, 킬이 보이게 찍어 주세요.");
   }
   return rows;
 }
