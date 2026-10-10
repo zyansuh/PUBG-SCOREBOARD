@@ -60,10 +60,8 @@ function resultCards(text: string) {
   lines.forEach((line, index) => {
     const found = headerCard(line);
     if (!found) return;
-    const next = index + 1 < lines.length && lines[index + 1] ? lines[index + 1] : undefined;
-    const card = { rank: found.rank, kills: killBeside(line, found.rank, found.slot, next), labeled: found.labeled };
-    const existing = cards.get(found.slot);
-    if (!existing || (!existing.labeled && card.labeled)) cards.set(found.slot, card);
+    const card = { rank: found.rank, kills: killBeside(lines, index, found.rank, found.slot), labeled: found.labeled };
+    cards.set(found.slot, mergeCard(cards.get(found.slot), card));
   });
 
   return cards;
@@ -94,14 +92,30 @@ function cardNumbers(rankText: string, slotText: string) {
   return { rank, slot };
 }
 
-function killBeside(line: string, rank: number, slot: number, nextLine?: string) {
-  const inline = leftoverNumber(line, rank, slot);
+function mergeCard(
+  existing: { rank: number; kills: number | null; labeled: boolean } | undefined,
+  card: { rank: number; kills: number | null; labeled: boolean },
+) {
+  if (!existing) return card;
+  if (existing.labeled && !card.labeled) return { ...existing, kills: existing.kills ?? card.kills };
+  if (!existing.labeled && card.labeled) return { ...card, kills: card.kills ?? existing.kills };
+  return { ...existing, kills: existing.kills ?? card.kills };
+}
+
+function killBeside(lines: string[], index: number, rank: number, slot: number) {
+  const inline = leftoverNumber(lines[index] ?? "", rank, slot);
   if (inline !== null) return inline;
-  if (!nextLine || nextLine.includes("#")) return null;
-  const bare = /^\D*(\d{1,2})\D*$/.exec(nextLine);
-  if (!bare) return null;
-  const value = Number(bare[1]);
-  return value <= KILL_MAX ? value : null;
+  const end = Math.min(lines.length, index + 4);
+  for (let cursor = index + 1; cursor < end; cursor += 1) {
+    const line = lines[cursor];
+    if (!line) continue;
+    if (line.includes("#")) break;
+    const bare = /^[^0-9A-Za-z]*(\d{1,2})[^0-9A-Za-z]*$/.exec(line);
+    if (!bare) continue;
+    const value = Number(bare[1]);
+    if (value <= KILL_MAX) return value;
+  }
+  return null;
 }
 
 function leftoverNumber(line: string, rank: number, slot: number) {

@@ -52,6 +52,16 @@ describe("readMatchRows", () => {
     ]);
   });
 
+  it("킬이 0이어도 빈칸으로 두지 않는다", () => {
+    expect(readMatchRows(["#7 팀6", "[BABY] Chul_sao", "0"].join("\n"), [{ slot: 6, name: "6팀" }])).toEqual([
+      { name: "6팀", rank: 7, kills: 0 },
+    ]);
+    expect(readMatchRows(["#7 팀6", "#746", "0"].join("\n"), [{ slot: 6, name: "6팀" }])).toEqual([
+      { name: "6팀", rank: 7, kills: 0 },
+    ]);
+    expect(readMatchRows("1 TEAM 2 0", [{ slot: 2, name: "2팀" }])).toEqual([{ name: "2팀", rank: 1, kills: 0 }]);
+  });
+
   it("팀 칸이 보이지 않으면 그 팀은 넣지 않는다", () => {
     expect(readMatchRows("헤더만 있는 사진", roster)).toEqual([]);
   });
