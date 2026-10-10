@@ -7,7 +7,7 @@ import { ExtractError, type ExtractedTeam } from "./extract";
 import { readMatchRows, type RosterSlotName } from "./ocr-rows";
 
 const MAX_EDGE = 960;
-const LANG_PATH = path.join(process.cwd(), "src", "lib", "tessdata");
+const LANG_PATH = path.join(process.cwd(), "public", "tessdata");
 const CACHE_PATH = path.join(tmpdir(), "pubg-ocr-fast");
 
 let workerPromise: Promise<Worker> | null = null;

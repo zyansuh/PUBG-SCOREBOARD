@@ -21,7 +21,7 @@ export default async function UploadPage() {
     <section>
       <h1 className="text-2xl font-black">경기 결과 입력</h1>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-white/70">
-        참가 팀을 10칸까지 저장한 뒤 결과 사진을 올리면, 서버가 사진에서 순위와 킬을 읽고 점수를 계산합니다. 확인 후 반영하면 순위표에 누적됩니다.
+        참가 팀을 10칸까지 저장한 뒤 결과 사진을 올리면, 이 화면에서 순위와 킬을 읽고 서버가 점수를 계산합니다. 확인 후 반영하면 순위표에 누적됩니다.
       </p>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-white/70">
         사진이 없으면 경기 순위와 킬을 직접 입력해도 같은 규칙으로 계산합니다.

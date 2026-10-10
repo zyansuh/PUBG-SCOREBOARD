@@ -3,10 +3,8 @@ import { adminGuard } from "@/lib/auth";
 import { findMatchByHash, listSlottedTeams, listTeamOptions } from "@/lib/db";
 import { ExtractError } from "@/lib/extract";
 import { detectImageMime, MAX_IMAGE_BYTES, sha256Hex } from "@/lib/image";
-import { recognizeMatchImage } from "@/lib/ocr";
+import { readMatchRows } from "@/lib/ocr-rows";
 import { assignExtractedTeams } from "@/lib/teams";
-
-export const maxDuration = 60;
 
 export async function POST(request: Request) {
   const denied = await adminGuard();
@@ -50,11 +48,19 @@ export async function POST(request: Request) {
       );
     }
 
+    const ocrText = form.get("ocrText");
+    if (typeof ocrText !== "string" || !ocrText.trim() || ocrText.length > 100_000) {
+      throw new ExtractError("사진에서 글자를 읽지 못했습니다. 순위, 팀명, 킬이 보이는 이미지로 다시 올려 주세요.");
+    }
+
     const roster = await listSlottedTeams();
-    const extracted = await recognizeMatchImage(
-      bytes,
+    const extracted = readMatchRows(
+      ocrText,
       roster.map((team) => ({ slot: team.slot, name: team.name })),
     );
+    if (extracted.length === 0) {
+      throw new ExtractError("사진에서 TEAM 1 같은 칸 번호를 찾지 못했습니다. 저장한 칸 번호, 순위, 킬이 보이게 찍어 주세요.");
+    }
     const teams = assignExtractedTeams(extracted, roster);
     const existingTeams = await listTeamOptions();
     console.info("[사진 분석] 확인 창에 보낼 결과를 만들었습니다.", { teams: teams.length });
